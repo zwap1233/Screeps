@@ -1,0 +1,6 @@
+dist
+.vscode
+node_modules
+.screeps.json
+*.code-workspace
+package-lock.json
