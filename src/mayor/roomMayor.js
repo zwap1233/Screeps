@@ -4,15 +4,16 @@
 // email:		woutereldar@gmail.com
 
 class roomMayor {
+
 	/**
-	 * @param {String} name 
+	 * @param {Room} room 
 	 */
-	constructor(name) {
-		this.name = name;
+	constructor(room) {
+		this.room = room;
 	}
 
 	run() {
-		console.log(this.name);
+
 	}
 }
 
