@@ -4,10 +4,14 @@
 // email:		woutereldar@gmail.com
 
 const version = require('version');
-const roomMayor = require('mayor/roomMayor');
+const operationsDirector = require('operations/operationsDirector');
 
 module.exports.loop = function() {
-	version.checkVersion();
+	if(version.checkVersion()) {
+		operationsDirector.init();
+	}
+
+	operationsDirector.update();
 
 	//console.log(Game.cpu.getUsed());
 };
