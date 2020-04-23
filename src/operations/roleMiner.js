@@ -3,15 +3,33 @@
 // Author:		Wouter Schoenmakers
 // email:		woutereldar@gmail.com
 
-var operationsDirector = require('operations/operationsDirector');
-
 var roleMiner = {
 
 	MINING: 'mining',
 	TRANSFERING: 'transfering',
 
+	/**
+	 * Set the role, overlord and assigned room of this creep, if this is not already set. Can not be used to change these parameters
+	 * @param {Creep} creep 
+	 * @param {String} overlord
+	 * @param {Room} room
+	 */
+	initCreep: function(creep, overlord, room) {
+		if(creep.memory.role === null) {
+			creep.memory.role = 'miner';
+		}
+
+		if(creep.memory.overlord === null) {
+			creep.memory.overlord = overlord;
+		}
+
+		if(creep.memory.assignedroom === null) {
+			creep.memory.assignedroom = room.name;
+		}
+	},
+
 	/** @param {Creep} creep */
-	updateCreep: function(creep) {
+	updateCreep: function(creep, operationsDirector) {
 		let src = Game.getObjectById(creep.memory.source);
 		let dst = Game.getObjectById(creep.memory.destination);
 
