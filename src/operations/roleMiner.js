@@ -8,42 +8,32 @@ var roleMiner = {
 	MINING: 'mining',
 	TRANSFERING: 'transfering',
 
-	/**
-	 * Set the role, overlord and assigned room of this creep, if this is not already set. Can not be used to change these parameters
-	 * @param {Creep} creep 
-	 * @param {String} overlord
-	 * @param {Room} room
-	 */
-	initCreep: function(creep, overlord, room) {
-		if(creep.memory.role === null) {
-			creep.memory.role = 'miner';
-		}
-
-		if(creep.memory.overlord === null) {
-			creep.memory.overlord = overlord;
-		}
-
-		if(creep.memory.assignedroom === null) {
-			creep.memory.assignedroom = room.name;
-		}
-	},
-
 	/** @param {Creep} creep */
 	updateCreep: function(creep, operationsDirector) {
+		if(creep.memory.role != CreepRole.MINER) {
+			return;
+		}
+
+		console.log('Updating creep: ' + creep.name);
+
+		if(!creep.memory.status) {
+			creep.memory.status = this.MINING;
+		}
+
 		let src = Game.getObjectById(creep.memory.source);
 		let dst = Game.getObjectById(creep.memory.destination);
 
 		//If source is empty or null get new source from director
-		if(src == null) {
+		if(src === null) {
 			src = operationsDirector.assignMiningSource(creep);
 			creep.memory.source = src.id;
-		} else if(src.store[RESOURCE_ENERGY] == 0) {
+		} else if(src.energy == 0) {
 			src = operationsDirector.assignMiningSource(creep);
 			creep.memory.source = src.id;
 		}
 
 		//If destination is full or null get new destination from director
-		if(dst = null) {
+		if(dst === null) {
 			dst = operationsDirector.assignMiningDestination(creep);
 			creep.memory.destination = dst.id;
 		} else if(dst.store.getFreeCapacity(RESOURCE_ENERGY) == 0) {
@@ -51,7 +41,7 @@ var roleMiner = {
 			creep.memory.destination = dst.id;
 		}
 
-		if(creep.memory.status === this.MINING) {
+		if(creep.memory.status == this.MINING) {
 			if(creep.store.getFreeCapacity(RESOURCE_ENERGY) >= 2) {
 				if(creep.harvest(src) === ERR_NOT_IN_RANGE) {
 					creep.moveTo(src, {
@@ -71,7 +61,8 @@ var roleMiner = {
 					creep.moveTo(dst, {
 						visualizePathStyle: {
 							stroke: '#32ba35'
-						}
+						},
+						reusePath: 10
 					})
 				}
 			} else {

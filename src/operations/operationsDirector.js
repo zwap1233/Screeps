@@ -4,6 +4,7 @@
 // email:		woutereldar@gmail.com
 
 var roleMiner = require('operations/roleMiner');
+var _ = require('lodash');
 
 var operationsDirector = {
 
@@ -27,25 +28,51 @@ var operationsDirector = {
 	 * @param {Room} room 
 	 */
 	initRoom: function(room) {
+		//Maximum # of miners assigned to room
 		if(!room.memory.maxMiners) {
 			room.memory.maxMiners = 4;
 		}
 
+		//List of all assigned creeps
+		if(!room.memory.creeps) {
+			room.memory.creeps = [];
+		}
+
+		//setup mining related memory
 		if(!room.memory.mining) {
 			room.memory.mining = {};
 		}
 
+		//The director spreads the miners over multiple sources
 		if(!room.memory.mining.srcIndex) {
 			room.memory.mining.srcIndex = 0;
 		}
 
 		if(!room.memory.mining.sources) {
-			room.memory.mining.sources = [];
+			room.memory.mining.sources = {};
 		}
 
-		var i = 0;
+		let i = 0;
+		const terrain = new Room.Terrain(room.name);
 		room.find(FIND_SOURCES).forEach(src => {
-			room.memory.mining.sources[i] = src.id;
+			let x = src.pos.x;
+			let y = src.pos.y;
+			let space = 0;
+			for(let dx = -1; dx < 2; dx++) {
+				for(let dy = -1; dy < 2; dy++) {
+					if(dx != 0 || dy != 0) {
+						if(terrain.get(x + dx, y + dy) == 0) {
+							space++;
+						}
+					}
+				}
+			}
+			room.memory.mining.sources[i] = {
+				id: src.id,
+				maxMiners: space,
+				miners: 0
+			};
+
 			i++;
 		});
 
@@ -57,7 +84,7 @@ var operationsDirector = {
 			room.memory.mining.destinations = [];
 		}
 
-		var i = 0;
+		i = 0;
 		room.find(FIND_MY_STRUCTURES, {
 			filter: function(object) {
 				return (object.structureType == STRUCTURE_SPAWN || object.structureType == STRUCTURE_CONTAINER || object.structureType == STRUCTURE_EXTENSION || object.structureType == STRUCTURE_STORAGE);
@@ -66,39 +93,86 @@ var operationsDirector = {
 			room.memory.mining.destinations[i] = dst.id
 			i++
 		});
-
-		for(const name in Game.creeps) {
-			roleMiner.initCreep(Game.creeps[name], 'operations', room);
-		}
 	},
 
 	/** @param {Room} room */
 	updateRoom: function(room) {
-		for(const name in Game.creeps) {
-			roleMiner.updateCreep(Game.creeps[name], this);
+		if(Object.keys(Game.creeps).length < room.memory.maxMiners) {
+			this.spawnCreep(room, Director.OPERATIONS, CreepRole.MINER);
 		}
+
+		//find better way of finding assigned creeps
+		room.memory.creeps.forEach(name => {
+			if(!Game.creeps[name]) {
+				delete room.memory.creeps[name];
+			} else {
+				roleMiner.updateCreep(Game.creeps[name], this);
+			}
+		});
+	},
+
+	/**
+	 * 
+	 * @param {Room} room 
+	 * @param {Director} director 
+	 * @param {CreepRole} role 
+	 */
+	spawnCreep: function(room, director, role) {
+		let spawn = room.find(FIND_MY_SPAWNS)[0];
+		let name = director + '_' + Game.time;
+		let res = spawn.spawnCreep([
+			WORK,
+			MOVE,
+			CARRY
+		], name, {
+			memory: {
+				role: role,
+				director: director,
+				room: room.name
+			}
+		});
+
+		if(res == OK) {
+			room.memory.creeps.push(name);
+		}
+
+		return res;
 	},
 
 	/** @param {Creep} creep */
 	assignMiningSource: function(creep) {
-		var src = room.memory.mining.sources[room.memory.mining.srcIndex];
-		room.memory.mining.srcIndex++;
-		if(room.mining.srcIndex >= room.mining.sources.length) {
-			room.mining.srcIndex = 0;
+		let room = Game.rooms[creep.memory.room];
+
+		let dst = Game.getObjectById(creep.memory.destination);;
+		if(dst === null) {
+			dst = this.assignMiningDestination(creep);
 		}
+
+		let goals = _.map(_.filter(room.memory.mining.sources, function(o) {
+			return o.miners < o.maxMiners;
+		}), function(o) {
+			return Game.getObjectById(o.id);
+		});
+
+		let src = dst.pos.findClosestByPath(goals);
+		_.find(room.memory.mining.sources, {
+			id: src.id
+		}).miners++;
 
 		return src;
 	},
 
 	/** @param {Creep} creep */
 	assignMiningDestination: function(creep) {
-		var dst = room.memory.mining.destinations[room.memory.mining.dstIndex];
+		let room = Game.rooms[creep.memory.room];
+		let dst_id = room.memory.mining.destinations[room.memory.mining.dstIndex];
+
 		room.memory.mining.dstIndex++;
-		if(room.mining.dstIndex >= room.mining.destinations.length) {
-			room.mining.dstIndex = 0;
+		if(room.memory.mining.dstIndex >= room.memory.mining.destinations.length) {
+			room.memory.mining.dstIndex = 0;
 		}
 
-		return dst;
+		return Game.getObjectById(dst_id);
 	}
 };
 

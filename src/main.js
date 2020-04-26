@@ -6,9 +6,25 @@
 const version = require('version');
 const operationsDirector = require('operations/operationsDirector');
 
+global.CreepRole = {
+	MINER: 'miner'
+};
+
+global.Director = {
+	OPERATIONS: 'operations',
+	MILITARY: 'military',
+	LOGISTICS: 'logistics'
+};
+
 module.exports.loop = function() {
 	if(version.checkVersion()) {
 		operationsDirector.init();
+	}
+
+	for(var name in Memory.creeps) {
+		if(!Game.creeps[name]) {
+			delete Memory.creeps[name];
+		}
 	}
 
 	operationsDirector.update();
